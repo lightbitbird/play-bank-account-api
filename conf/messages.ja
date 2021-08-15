@@ -1,0 +1,6 @@
+hello = {0}さん、こんにちは!
+noQuery = nameという名前のクエリパラメータをリクエストしてください.
+
+error.minLength = メッセージを入力してください
+error.maxLength = メッセージが長すぎます
+error.unauthorized = 401 Unauthorized

@@ -1,0 +1,6 @@
+hello = Hello, {0}!
+noQuery = Please give a name a query parameter named "name".
+
+error.minLength = Please enter a message.
+error.maxLength = The message is too long.
+error.unauthorized = 401 Unauthorized
