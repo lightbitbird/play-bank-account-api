@@ -37,7 +37,7 @@ CREATE TABLE `transaction` (
     `account_from` VARCHAR(50),
     `account_to` VARCHAR(50),
     `type` SMALLINT DEFAULT 0, -- 0: withdraw 1: deposit 2: transfer from 3: transfer to
-    currency VARCHAR(50) NOT NULL DEFAULT 'yen',
+    `currency` VARCHAR(50) NOT NULL DEFAULT 'yen',
     `status` SMALLINT DEFAULT 0,
     `amount` BIGINT NOT NULL DEFAULT 0,
 --     `deposit` BIGINT NOT NULL DEFAULT 0,
@@ -69,8 +69,8 @@ CREATE TABLE `branch` (
 
 
 # --- !Downs
-DROP TABLE `customer`;
-DROP TABLE `account`;
-DROP TABLE `transaction`;
-DROP TABLE `bank`;
-DROP TABLE `branch`;
+DROP TABLE IF EXISTS `customer`;
+DROP TABLE IF EXISTS `account`;
+DROP TABLE IF EXISTS `transaction`;
+DROP TABLE IF EXISTS `bank`;
+DROP TABLE IF EXISTS `branch`;

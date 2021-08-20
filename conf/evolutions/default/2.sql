@@ -1,4 +1,5 @@
 # --- !Ups
+INSERT INTO `account`(account_number, customer_id, `type`, bank_id, balance, interest_rate, status) VALUES('FNE00105', 1, 1, 12, 1245000, 0.0025, 0);
 INSERT INTO `transaction`(account_number, account_from, account_to, `type`, currency, status, amount, transaction_at) VALUES('FNE00105', 'BBC0126', 'FNE00105', '3', 'yen', '0', '420000', '2020-12-28 08:00:52');
 
 INSERT INTO `transaction`(account_number, account_from, account_to, `type`, currency, status, amount, transaction_at) VALUES('FNE00105', 'FNE00105', '', '0', 'yen', '0', '3000', '2021-01-01 19:28:47');
@@ -93,6 +94,7 @@ INSERT INTO `transaction`(account_number, account_from, account_to, `type`, curr
 INSERT INTO `transaction`(account_number, account_from, account_to, `type`, currency, status, amount, transaction_at) VALUES('FNE00105', 'FNE00105', 'DEF0003', '2', 'yen', '0', '17000', '2021-12-15 11:13:15');
 INSERT INTO `transaction`(account_number, account_from, account_to, `type`, currency, status, amount, transaction_at) VALUES('FNE00105', 'BBC0126', 'FNE00105', '3', 'yen', '0', '430000', '2021-12-22 16:42:10');
 INSERT INTO `transaction`(account_number, account_from, account_to, `type`, currency, status, amount, transaction_at) VALUES('FNE00105', 'FNE00105', 'DEF0003', '2', 'yen', '0', '72000', '2021-12-28 21:30:28');
+
 
 
 

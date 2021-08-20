@@ -1,16 +1,16 @@
 package controllers
 
+import io.circe.syntax._
 import models.{Customer, Meta, Response}
 import play.api.data.Form
-import play.api.data.Forms.{date, email, localDate, mapping, number, sqlDate, text}
+import play.api.data.Forms._
 import play.api.data.validation.Constraints.nonEmpty
-import play.api.i18n.{I18nSupport, Lang, Messages, MessagesApi}
-import play.api.libs.json.Json
+import play.api.i18n.{I18nSupport, Messages, MessagesApi}
+import play.api.libs.circe.Circe
 import play.api.mvc.{AbstractController, ControllerComponents, RequestHeader}
 import repositories.CustomerRepository
 
-import java.time.{LocalDate, OffsetDateTime}
-import java.util.Locale
+import java.time.LocalDate
 import javax.inject.Inject
 
 case class LoginRequest(email: String, password: String)
@@ -27,8 +27,8 @@ case class RegisterRequest(
                             gender: Int
                           )
 
-class AuthController @Inject()(cc: ControllerComponents, override val messagesApi: MessagesApi) extends AbstractController(cc) with I18nSupport {
-  val logger = play.api.Logger("play")
+class AuthController @Inject()(cc: ControllerComponents, override val messagesApi: MessagesApi) extends AbstractController(cc) with I18nSupport with Circe {
+  override val logger = play.api.Logger("play")
 
   private[this] val registerForm = Form(
     mapping(
@@ -73,7 +73,7 @@ class AuthController @Inject()(cc: ControllerComponents, override val messagesAp
         val errors = errorJson[RegisterRequest](error, request)
         logger.info(s"errors: $errors")
 
-        BadRequest(Json.toJson(Response(Meta(400), Some(Json.toJson(errors)))))
+        BadRequest(Response(Meta(400), Some(errors.asJson)).asJson)
       },
       register => {
         val user = Customer(
@@ -92,7 +92,7 @@ class AuthController @Inject()(cc: ControllerComponents, override val messagesAp
 
         CustomerRepository.add(user)
 //        val user = Customer(email = register.email, password = register.password)
-        Ok(Json.toJson(Response(Meta(200), Some(Json.toJson(user)))))
+        Ok(Response(Meta(200), Some(user.asJson)).asJson)
       }
     )
   }
@@ -110,18 +110,18 @@ class AuthController @Inject()(cc: ControllerComponents, override val messagesAp
 //          )
 //        }
         val errors = errorJson[LoginRequest](error, request)
-        BadRequest(Json.toJson(Response(Meta(400), Some(Json.toJson(errors)))))
+        BadRequest(Response(Meta(400), Some(errors.asJson)).asJson)
       },
       loginRequest => {
         logger.info(s"loginRequest: ${loginRequest.email}, ${loginRequest.password}")
         CustomerRepository.findAuthUser(loginRequest.email, loginRequest.password) match {
-          case Some(u) => Ok(Json.toJson(Response(Meta(200), Some(Json.toJson(u)))))
+          case Some(u) => Ok(Response(Meta(200), Some(u.asJson)).asJson)
           case _ => {
             val error = Map(
               "key" -> "Unauthorized",
               "message" -> Messages("error.unauthorized")
             )
-            BadRequest(Json.toJson(Response(Meta(401), Some(Json.toJson(error)))))
+            BadRequest(Response(Meta(401), Some(error.asJson)).asJson)
           }
         }
 //        val user = Customer(email = Some(loginRequest.email), password = Some(loginRequest.password))

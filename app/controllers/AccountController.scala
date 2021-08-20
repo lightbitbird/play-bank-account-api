@@ -1,16 +1,15 @@
 package controllers
 
-import models.{Account, Customer, Meta, Response}
+import io.circe.syntax.EncoderOps
+import models.{Account, Meta, Response}
 import play.api.data.Form
-import play.api.data.Forms.{bigDecimal, date, email, localDate, localDateTime, longNumber, mapping, number, shortNumber, sqlDate, text}
-import play.api.data.validation.Constraints.nonEmpty
-import play.api.i18n.{I18nSupport, Lang, Messages, MessagesApi}
-import play.api.libs.json.Json
+import play.api.data.Forms._
+import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.libs.circe.Circe
 import play.api.mvc.{AbstractController, ControllerComponents, RequestHeader}
-import repositories.{AccountRepository, CustomerRepository}
+import repositories.AccountRepository
+import services.AccountService
 
-import java.time.{LocalDate, LocalDateTime, OffsetDateTime, ZonedDateTime}
-import java.util.Locale
 import javax.inject.Inject
 
 case class AccountRequest(
@@ -23,8 +22,8 @@ case class AccountRequest(
                             status: Short
                           )
 
-class AccountController @Inject()(cc: ControllerComponents, override val messagesApi: MessagesApi) extends AbstractController(cc) with I18nSupport {
-  val logger = play.api.Logger("play")
+class AccountController @Inject()(cc: ControllerComponents, override val messagesApi: MessagesApi, accountService: AccountService) extends AbstractController(cc) with I18nSupport with Circe {
+  override val logger = play.api.Logger("play")
 
   private[this] val registerForm = Form(
     mapping(
@@ -53,7 +52,7 @@ class AccountController @Inject()(cc: ControllerComponents, override val message
         val errors = errorJson[AccountRequest](error, request)
         logger.info(s"errors: $errors")
 
-        BadRequest(Json.toJson(Response(Meta(400), Some(Json.toJson(errors)))))
+        BadRequest(Response(Meta(400), Some(errors.asJson)).asJson)
       },
       accountReq => {
         val account = Account(
@@ -68,8 +67,8 @@ class AccountController @Inject()(cc: ControllerComponents, override val message
 
         logger.info(s"account: $account")
 
-        AccountRepository.add(account)
-        Ok(Json.toJson(Response(Meta(200), Some(Json.toJson(account)))))
+        accountService.add(account)
+        Ok(Response(Meta(200), Some(account.asJson)).asJson)
       }
     )
   }

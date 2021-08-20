@@ -6,6 +6,8 @@ lazy val root = (project in file(".")).enablePlugins(PlayScala)
 scalaVersion := "2.13.6"
 version := "2.8.8"
 val scalikejdbcVersion = "3.5.0"
+val circeVersion = "0.14.1"
+val circeValidationVersion = "0.1.0"
 
 libraryDependencies ++= Seq(
   guice,
@@ -19,6 +21,12 @@ libraryDependencies ++= Seq(
   //  "org.scalikejdbc" %% "scalikejdbc-jsr310" % scalikejdbcVersion,
   "org.scalikejdbc" %% "scalikejdbc-play-initializer" % "2.8.0-scalikejdbc-3.5",
   "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0" % Test,
+  "io.circe" %% "circe-core" % circeVersion,
+  "io.circe" %% "circe-generic" % circeVersion,
+  "io.circe" %% "circe-parser" % circeVersion,
+  "io.circe" %% "circe-generic-extras" % circeVersion,
+  "io.circe" %% "circe-optics" % circeVersion,
+  "com.dripower" %% "play-circe" % "2814.1"
 )
 
 // Adds additional packages into Twirl

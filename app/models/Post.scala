@@ -1,5 +1,8 @@
 package models
 
+import io.circe.{Decoder, Encoder}
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
+
 import java.time._
 import play.api.libs.json.Json
 import play.api.libs.json.Writes
@@ -7,7 +10,9 @@ import play.api.libs.json.Writes
 case class Post(id: Long, body: String, date: OffsetDateTime)
 
 object Post {
-  implicit val writes: Writes[Post] = Json.writes[Post]
+//  implicit val writes: Writes[Post] = Json.writes[Post]
+  implicit def encode: Encoder[Post] = deriveEncoder
+  implicit def decode: Decoder[Post] = deriveDecoder
 
   def apply(body: String, date: OffsetDateTime): Post =
     Post(0, body, date)

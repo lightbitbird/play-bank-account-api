@@ -1,10 +1,25 @@
 package repositories
 
-import models.{Account, Customer}
+import com.google.inject.ImplementedBy
+import models.Account
+import play.api.Configuration
 import scalikejdbc.{DB, scalikejdbcSQLInterpolationImplicitDef}
 
-object AccountRepository {
-  def findByAccountNumber(accountNumber: String): Option[Account] = DB readOnly { implicit session =>
+import javax.inject.{Inject, Singleton}
+
+@ImplementedBy(classOf[AccountRepositoryImpl])
+trait AccountRepository {
+  def findByAccountNumber(accountNumber: String): Option[Account]
+
+  def findAll: Seq[Account]
+
+  def add(user: Account): Unit
+}
+
+@Singleton
+class AccountRepositoryImpl @Inject()(config: Configuration) extends AccountRepository {
+
+  override def findByAccountNumber(accountNumber: String): Option[Account] = DB readOnly { implicit session =>
     sql"""SELECT id, account_number, customer_id, `type`, bank_id, balance, interest_rate, status FROM account
          WHERE account_number = $accountNumber""".map { rs =>
       Account(Option(rs.long("id")),
@@ -13,13 +28,13 @@ object AccountRepository {
         rs.short("type"),
         rs.long("bank_id"),
         rs.long("balance"),
-        rs.bigDecimal("interestRate"),
+        rs.bigDecimal("interest_rate"),
         rs.short("status")
       )
     }.single().apply()
   }
 
-  def findAll: Seq[Account] = DB readOnly { implicit session =>
+  override def findAll: Seq[Account] = DB readOnly { implicit session =>
     sql"SELECT id, account_number, customer_id, `type`, bank_id, balance, interest_rate, status FROM account".map { rs =>
       Account(Option(rs.long("id")),
         rs.string("account_number"),
@@ -27,13 +42,13 @@ object AccountRepository {
         rs.short("type"),
         rs.long("bank_id"),
         rs.long("balance"),
-        rs.bigDecimal("interestRate"),
+        rs.bigDecimal("interest_rate"),
         rs.short("status")
       )
     }.list().apply()
   }
 
-  def add(user: Account): Unit = DB localTx { implicit session =>
+  override def add(user: Account): Unit = DB localTx { implicit session =>
     sql"""INSERT INTO account (account_number, customer_id, `type`, bank_id, balance, interest_rate, status)
          VALUES(${user.accountNumber}, ${user.customerId}, ${user.`type`}, ${user.bankId}, ${user.balance}, ${user.interestRate}, ${user.status})""".update().apply()
   }
