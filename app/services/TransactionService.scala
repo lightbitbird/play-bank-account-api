@@ -1,7 +1,7 @@
 package services
 
 import com.google.inject.ImplementedBy
-import commons.{Deposit, TransferFrom, TransferTo, Withdraw}
+import commons.{Deposit, TransferFrom, TransferTo, Withdrawal}
 import models.{Balance, Month, Transaction, TransactionHistory}
 import repositories.{AccountRepository, TransactionRepository}
 
@@ -35,20 +35,24 @@ trait TransactionService {
 
 @Singleton
 class TransactionServiceImpl @Inject()(repository: TransactionRepository, accountRepository: AccountRepository) extends TransactionService {
-  val logger = play.api.Logger("play")
-
   override def getHistories(accountNumber: String, startAt: Timestamp, endAt: Timestamp): Map[String, Seq[Transaction]] = repository.getHistories(accountNumber, startAt, endAt)
 
   override def getMonthHistories(accountNumber: String, transactionAt: Timestamp): TransactionHistory = {
     val histories = repository.getMonthHistories(accountNumber, transactionAt)
     val totals = getMonthlyAmountsByType(accountNumber, transactionAt)
-    logger.info(s"totals = $totals")
-    val withdrawal = totals.filter(t => t._1 == Withdraw.name || t._1 == TransferFrom.name)
-      .map(a => a._2.foldLeft(0L)((total, t) => total + t._2)).toSeq(0)
-    val deposit = totals.filter(t => t._1 == Deposit.name || t._1 == TransferTo.name)
-      .map(a => a._2.foldLeft(0L)((total, t) => total + t._2)).toSeq(0)
+    val localDt = transactionAt.toLocalDateTime
+    val yearMonth = s"${localDt.getYear}${String.format("%02d", localDt.getMonthValue)}"
+    var withdrawal = 0L
+    for {
+      w <- totals.filter(t => t._1 == Withdrawal.name || t._1 == TransferFrom.name)
+      a <- w._2 if a._1 == yearMonth
+    } yield withdrawal += a._2
 
-    logger.info(s"withdrawal = $withdrawal")
+    var deposit = 0L
+    for {
+      d <- totals.filter(t => t._1 == Deposit.name || t._1 == TransferTo.name)
+      a <- d._2 if a._1 == yearMonth
+    } yield deposit += a._2
 
     val month = Month(transactionAt.toLocalDateTime.getMonth.name(), histories._1)
     TransactionHistory("Monthly", Balance(deposit = deposit, withdrawal = withdrawal, total = histories._2), month, totals, histories._3, histories._4)
@@ -58,21 +62,22 @@ class TransactionServiceImpl @Inject()(repository: TransactionRepository, accoun
     repository.getAmountsByMonth(accountNumber, startAt, endAt, types)
 
   override def getAmountsByMonth(accountNumber: String, startAt: Timestamp, endAt: Timestamp): Map[String, Map[Short, Long]] =
-    getAmountsByMonth(accountNumber, startAt, endAt, Seq[Short](Withdraw.value, Deposit.value, TransferFrom.value, TransferTo.value))
+    getAmountsByMonth(accountNumber, startAt, endAt, Seq[Short](Withdrawal.value, Deposit.value, TransferFrom.value, TransferTo.value))
 
   override def getMonthlyAmountsByType(accountNumber: String, transactionAt: Timestamp, types: Seq[Short]): Map[String, Map[String, Long]] = {
     val temp = TemporalAdjusters.firstDayOfMonth()
-//    val offsetDatetime = OffsetDateTime.of(transactionAt.toLocalDateTime, ZoneOffset.UTC).plusMonths(1).`with`(temp)
     val offsetDatetime = OffsetDateTime.now().plusMonths(1).`with`(temp)
     val before12Months = offsetDatetime.minusMonths(12).`with`(temp)
-    val timestamp = Timestamp.valueOf(offsetDatetime.atZoneSameInstant(ZoneOffset.UTC).toLocalDateTime)
-    val tmBefore12months = Timestamp.valueOf(before12Months.atZoneSameInstant(ZoneOffset.UTC).toLocalDateTime)
+    val timestamp = Timestamp.valueOf(offsetDatetime.atZoneSameInstant(ZoneOffset.UTC).toLocalDateTime
+      .withDayOfMonth(1).withHour(1).withMinute(1).withSecond(1).withNano(0))
+    val tmBefore12Months = Timestamp.valueOf(before12Months.atZoneSameInstant(ZoneOffset.UTC).toLocalDateTime
+      .withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0))
 
-    repository.getMonthlyAmountsByType(accountNumber, tmBefore12months, timestamp, Seq[Short](Withdraw.value, Deposit.value, TransferFrom.value, TransferTo.value))
+    repository.getMonthlyAmountsByType(accountNumber, tmBefore12Months, timestamp, Seq[Short](Withdrawal.value, Deposit.value, TransferFrom.value, TransferTo.value))
   }
 
   override def getMonthlyAmountsByType(accountNumber: String, transactionAt: Timestamp): Map[String, Map[String, Long]] =
-    getMonthlyAmountsByType(accountNumber, transactionAt, Seq[Short](Withdraw.value, Deposit.value, TransferFrom.value, TransferTo.value))
+    getMonthlyAmountsByType(accountNumber, transactionAt, Seq[Short](Withdrawal.value, Deposit.value, TransferFrom.value, TransferTo.value))
 
   override def findByAccountNumber(accountNumber: String): Option[Transaction] = repository.findByAccountNumber(accountNumber)
 
@@ -84,12 +89,6 @@ class TransactionServiceImpl @Inject()(repository: TransactionRepository, accoun
   }
 
   override def updateBalance(accountNumber: String, amount: Long): Int = {
-    val account = accountRepository.findByAccountNumber(accountNumber)
-    val calc = account match {
-      case Some(a) => a.balance + amount
-      case None => amount
-    }
-
-    repository.updateBalance(accountNumber, amount)
+    accountRepository.updateBalance(accountNumber, amount)
   }
 }

@@ -13,7 +13,7 @@ sealed abstract class TransactionType(val name: String, val value: Short) {
     value == 3
   }
 }
-case object Withdraw extends TransactionType("withdrawal", 0)
+case object Withdrawal extends TransactionType("withdrawal", 0)
 case object Deposit extends TransactionType("deposit", 1)
 case object TransferFrom extends TransactionType("transform_from", 2)
 case object TransferTo extends TransactionType("transform_to", 3)

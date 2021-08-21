@@ -1,6 +1,7 @@
 package repositories
 
 import com.google.inject.ImplementedBy
+import commons.NotDeleted
 import models.Account
 import play.api.Configuration
 import scalikejdbc.{DB, scalikejdbcSQLInterpolationImplicitDef}
@@ -14,6 +15,8 @@ trait AccountRepository {
   def findAll: Seq[Account]
 
   def add(user: Account): Unit
+
+  def updateBalance(accountNumber: String, amount: Long): Int
 }
 
 @Singleton
@@ -51,5 +54,9 @@ class AccountRepositoryImpl @Inject()(config: Configuration) extends AccountRepo
   override def add(user: Account): Unit = DB localTx { implicit session =>
     sql"""INSERT INTO account (account_number, customer_id, `type`, bank_id, balance, interest_rate, status)
          VALUES(${user.accountNumber}, ${user.customerId}, ${user.`type`}, ${user.bankId}, ${user.balance}, ${user.interestRate}, ${user.status})""".update().apply()
+  }
+
+  override def updateBalance(accountNumber: String, amount: Long): Int = DB localTx { implicit session =>
+    sql"""UPDATE account SET balance = balance + $amount, updated_at = NOW() WHERE account_number = $accountNumber AND delete_flg = ${NotDeleted.value}""".update().apply()
   }
 }

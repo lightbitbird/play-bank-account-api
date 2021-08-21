@@ -26,14 +26,10 @@ trait TransactionRepository {
   def getMonthlyAmountsByType(accountNumber: String, startAt: Timestamp, endAt: Timestamp, types: Seq[Short]): Map[String, Map[String, Long]]
 
   def add(t: Transaction): (Long, Long)
-
-  def updateBalance(accountNumber: String, amount: Long): Int
 }
 
 @Singleton
 class TransactionRepositoryImpl @Inject()(config: Configuration) extends TransactionRepository {
-  val logger = play.api.Logger("play")
-
   override def findAll: Seq[Transaction] = DB readOnly { implicit session =>
     sql"SELECT id, account_number, account_from, account_to, `type`, currency, status, amount, transaction_at FROM transaction".map { rs =>
       Transaction(Option(rs.long("id")),
@@ -132,14 +128,14 @@ class TransactionRepositoryImpl @Inject()(config: Configuration) extends Transac
         if (Deposit.value == a || TransferFrom.value == a)
           Deposit.name
         else
-          Withdraw.name
+          Withdrawal.name
       }
       val map =
         sql"""SELECT DATE_FORMAT(transaction_at, '%Y%m') AS transaction_month,
             CASE WHEN `type` = 0 OR `type` = 2 THEN 0
                  WHEN `type` = 1 OR `type` = 3 THEN 1
             END AS `type`, SUM(amount) AS sums FROM transaction
-          WHERE account_number = $accountNumber AND transaction_at >= $startAt AND transaction_at <= $endAt AND `type` IN ($types)
+          WHERE account_number = $accountNumber AND transaction_at >= $startAt AND transaction_at < $endAt AND `type` IN ($types)
           GROUP BY DATE_FORMAT(transaction_at, '%Y%m'),
             CASE WHEN `type` = 0 OR `type` = 2 THEN 0
                  WHEN `type` = 1 OR `type` = 3 THEN 1
@@ -152,8 +148,7 @@ class TransactionRepositoryImpl @Inject()(config: Configuration) extends Transac
 
           var incrementDate = startAt.toLocalDateTime
           val amountMap = (0 to 11).toList.foldLeft(Map[String, Long]()) { (adds, i) =>
-            val tempDate = incrementDate.plusMonths(1)
-            val yearMonth = s"${tempDate.getYear}${String.format("%02d", tempDate.getMonthValue)}"
+            val yearMonth = s"${incrementDate.getYear}${String.format("%02d", incrementDate.getMonthValue)}"
             val list = mapByMonth.get(yearMonth) match {
               case Some(a) => adds + (yearMonth -> a)
               case None => adds + (yearMonth -> 0L)
@@ -175,8 +170,6 @@ class TransactionRepositoryImpl @Inject()(config: Configuration) extends Transac
       sql"""SELECT t.id, balance, a.account_number, account_from, account_to, t.`type`, currency, t.status, amount, transaction_at, MONTH(transaction_at) AS transaction_month FROM account AS a
            INNER JOIN transaction AS t ON a.account_number = t.account_number
           WHERE a.account_number = $accountNumber AND MONTH(transaction_at) = $month AND YEAR(transaction_at) = $year order by transaction_at""".map { rs =>
-        //    sql"""SELECT id, account_number, account_from, account_to, `type`, currency, status, amount, transaction_at, MONTH(transaction_at) AS transaction_month FROM transaction
-        //         WHERE account_number = $accountNumber AND MONTH(transaction_at) = $month AND YEAR(transaction_at) = $year order by transaction_at""".map { rs =>
         (Transaction(Option(rs.long("id")),
           rs.string("account_number"),
           rs.string("account_from"),
@@ -198,11 +191,6 @@ class TransactionRepositoryImpl @Inject()(config: Configuration) extends Transac
     val todayDate = localDate(LocalDateTime.now())
     val yesterdayDate = localDate(LocalDateTime.now().minusDays(1))
 
-    //    val details = for {
-    //     today <- list if localDate(today._1.transactionAt.get.toLocalDateTime) == todayDate
-    //     yesterday <- list if localDate(today._1.transactionAt.get.toLocalDateTime) == yesterdayDate
-    //    } yield (today._1, yesterday._1)
-
     val today = list.map(t => t._1).filter(t => localDate(t.transactionAt.get.toLocalDateTime) == todayDate)
     val yesterday = list.map(t => t._1).filter(t => localDate(t.transactionAt.get.toLocalDateTime) == yesterdayDate)
 
@@ -218,15 +206,9 @@ class TransactionRepositoryImpl @Inject()(config: Configuration) extends Transac
     }
 
     val amount = fix(t)
-    logger.info(s"Amount >>>> $amount")
     val id =
       sql"""INSERT INTO transaction (account_number, account_from, account_to, `type`, currency, status, amount)
          VALUES(${t.accountNumber}, ${t.accountFrom}, ${t.accountTo}, ${t.`type`}, ${t.currency}, ${t.status}, $amount)""".updateAndReturnGeneratedKey().apply()
     (id, amount)
-  }
-
-  override def updateBalance(accountNumber: String, amount: Long): Int = DB localTx { implicit session =>
-    logger.info(s"UPDATE account SET balance = balance + $amount WHERE account_number = $accountNumber AND updated_at = NOW() AND delete_flg = ${NotDeleted.value}")
-    sql"""UPDATE account SET balance = balance + $amount, updated_at = NOW() WHERE account_number = $accountNumber AND delete_flg = ${NotDeleted.value}""".update().apply()
   }
 }
